@@ -1,6 +1,6 @@
 {
   "name": "@ismail-bouasria/ci-cd",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "main": "dist/index.js",
   "private": false,
   "homepage": "https://ismail-bouasria.github.io/ci-cd/",
