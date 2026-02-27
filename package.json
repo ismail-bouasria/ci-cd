@@ -1,5 +1,5 @@
 {
-  "name": "ismakaza",
+  "name": "@ismakaza/ci-cd",
   "version": "0.1.9",
   "main": "dist/index.js",
   "private": false,
