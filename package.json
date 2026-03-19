@@ -26,7 +26,8 @@
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
-    "cypress": "cypress open"
+    "cypress": "cypress open",
+    "cypress:run": "cypress run"
   },
   "eslintConfig": {
     "extends": [

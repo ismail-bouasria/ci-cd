@@ -1,0 +1,92 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and start services
+        run: |
+          docker compose -f docker-compose.full.yml up --build -d
+
+      - name: Wait for services to be healthy
+        run: |
+          set -e
+          services=(db api frontend)
+          for s in "${services[@]}"; do
+            echo "Waiting for $s to be healthy..."
+            cid=$(docker compose -f docker-compose.full.yml ps -q $s)
+            retries=0
+            until [ -n "$cid" ] && [ "$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' $cid)" = "healthy" ] || [ $retries -ge 60 ]; do
+              sleep 5
+              cid=$(docker compose -f docker-compose.full.yml ps -q $s)
+              retries=$((retries+1))
+            done
+            if [ $retries -ge 60 ]; then
+              docker compose -f docker-compose.full.yml logs --tail=200
+              exit 1
+            fi
+          done
+
+      - name: Test containers and API
+        run: |
+          set -euo pipefail
+          echo "Listing compose services:"
+          docker compose -f docker-compose.full.yml ps
+          echo "Checking health statuses"
+          services=(db api frontend adminer)
+          for s in "${services[@]}"; do
+            cid=$(docker compose -f docker-compose.full.yml ps -q $s || true)
+            if [ -z "$cid" ]; then
+              echo "Service $s has no container id"
+              docker compose -f docker-compose.full.yml logs --tail=200
+              exit 1
+            fi
+            status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' $cid)
+            echo "$s -> $status"
+            if [ "$status" != "healthy" ]; then
+              docker compose -f docker-compose.full.yml logs --tail=200
+              exit 1
+            fi
+          done
+
+          echo "Testing API endpoint /users"
+          attempts=0
+          until [ $attempts -ge 12 ] ; do
+            http_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/users || true)
+            echo "HTTP status: $http_status"
+            if [ "$http_status" = "200" ]; then
+              echo "/users is reachable"
+              break
+            fi
+            attempts=$((attempts+1))
+            sleep 5
+          done
+          if [ "$http_status" != "200" ]; then
+            echo "API /users did not return 200"
+            docker compose -f docker-compose.full.yml logs api --tail=200
+            exit 1
+          fi
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+
+      - name: Run Cypress E2E
+        env:
+          CYPRESS_baseUrl: http://localhost:3000
+        run: |
+          npm run cypress:run -- --config baseUrl=http://localhost:3000
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f docker-compose.full.yml down -v
