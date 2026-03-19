@@ -1,1 +1,1 @@
-https://github.com/<votre-utilisateur>/<votre-repo>
+https://github.com/ismail-bouasria/ci-cd
