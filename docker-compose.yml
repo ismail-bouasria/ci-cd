@@ -1,16 +1,71 @@
 services:
+  db:
+    image: mysql:9.2
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ynov_ci}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sqlfiles/:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  server:
+    image: python-api
+    build:
+      context: .
+      dockerfile: ./server/DockerfilePython
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server:/server
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ynov_ci}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    command: uvicorn server:app --proxy-headers --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   react:
-    image: react
+    image: react-app
     build:
       context: .
       dockerfile: ./DockerfileReact
     ports:
-      - 3000:3000
+      - "3000:3000"
     environment:
-      - REACT_APP_SERVER_URL
+      REACT_APP_SERVER_URL: ${REACT_APP_SERVER_URL:-http://localhost:8000}
     volumes:
       - .:/app
       - /app/node_modules
       - /app/server
+    depends_on:
+      server:
+        condition: service_healthy
     command: npm start
 
