@@ -1,8 +1,9 @@
 {
-  "name": "ci-cd-ynov",
+  "name": "@ismail-bouasria/ci-cd",
   "version": "0.1.6",
+  "main": "dist/index.js",
   "private": false,
-  "homepage": "https://loise.github.io/ci-cd-ynov/",
+  "homepage": "https://ismail-bouasria.github.io/ci-cd/",
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
