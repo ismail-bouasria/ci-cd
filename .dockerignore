@@ -5,3 +5,5 @@ Dockerfile
 /server/DockerfileNodejs
 DockerfileReact
 /server/node_modules
+.env
+.env.example
