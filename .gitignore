@@ -23,3 +23,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vercel
+
+# Terraform
+server/registry/.terraform/
+server/registry/*.tfstate
+server/registry/*.tfstate.backup
+server/registry/*.pem

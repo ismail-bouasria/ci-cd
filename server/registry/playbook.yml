@@ -1,0 +1,67 @@
+---
+- name: déployment d'un registry Docker Sécurisé sur AWS EC2
+  hosts: registry_hosts
+  become: true
+  vars:
+    project_dir: "/home/ubuntu/registry-stack"
+#On récupère l'ip public automatiquement via les facts d'Ansible
+    registry_host_ip: "{{ ansible_host }}"
+
+  tasks:
+#Installation des Dependances
+    - name: Mise à jour du cache API
+      apt:
+        update_cache: yes
+
+    - name: Installation docker et outils
+      apt:
+        name: 
+          - docker.io
+          - docker-compose
+          - apache2-utils
+          - openssl
+          - python3-passlib
+        state: present
+
+    - name: Ajout de l'utilisateur ubuntu au groupe docker
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+    
+    - name: Création du répertoire du projet
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      loop: 
+        - "{{ project_dir }}"
+        - "{{ project_dir }}/data"
+        - "{{ project_dir }}/auth"
+
+    - name: Création du mot de passe htpasswd pour l'utilisateur admin
+      htpasswd:
+        path: "{{ project_dir }}/auth/registry.password"
+        name: admin
+        password: toto
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+        crypt_scheme: bcrypt
+      
+
+    - name: Copie du docker-compose.yml
+      template:
+        src: docker-compose.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+#Start du registry
+    - name: Démarrage de la stack
+      command: docker-compose up -d
+      args:
+        chdir: "{{ project_dir }}"
